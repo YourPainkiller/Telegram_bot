@@ -18,15 +18,18 @@ bot = Bot(token=TOKEN)
 dp = Dispatcher(bot)
 
 def gen_base():
+    """Функция, которая генерирует базу данных 'Crypto_base.db' с двумя ячейками: user_id, crypto.
+    На вход ничего не принимает.
+    Ничего не возвращает"""
     try:
         sqliteConnection = sqlite3.connect('Crypto_base.db')
         cursor = sqliteConnection.cursor()
-        print("Database created and Successfully Connected to SQLite")
+        print("Connected")
 
         sqlite_select_Query = "select sqlite_version();"
         cursor.execute(sqlite_select_Query)
         record = cursor.fetchall()
-        print("SQLite Database Version is: ", record)
+        print("Base Version", record)
         cursor.close()
 
     except sqlite3.Error as error:
@@ -34,7 +37,7 @@ def gen_base():
     finally:
         if sqliteConnection:
             sqliteConnection.close()
-            print("The SQLite connection is closed")
+            print("connection is closed")
 
     #####################################################
 
@@ -45,25 +48,28 @@ def gen_base():
                                     crypto text NOT NULL);'''
 
         cursor = sqliteConnection.cursor()
-        print("Successfully Connected to SQLite")
+        print("connected")
         cursor.execute(sqlite_create_table_query)
         sqliteConnection.commit()
-        print("SQLite table created")
+        print("table created")
         cursor.close()
 
     except sqlite3.Error as error:
-        print("Error while creating a sqlite table", error)
+        print("Error", error)
     finally:
         if sqliteConnection:
             sqliteConnection.close()
-            print("sqlite connection is closed")
+            print("connection is closed")
 
 def insert_value(user_id: int, crypto: str) -> str:
+    """Функция вставляет в базу данных две ячейки: user_id, crypto.
+    На вход принимает user_id и строку из любимой криптовалюты.
+    return string"""
     ret_msg = ""
     try:
         sqliteConnection = sqlite3.connect('Crypto_base.db')
         cursor = sqliteConnection.cursor()
-        print("Connected to SQLite")
+        print("Connected")
 
         sqlite_insert_with_param = """INSERT INTO users_data
                           (user_id, crypto) 
@@ -72,25 +78,28 @@ def insert_value(user_id: int, crypto: str) -> str:
         data_tuple = (user_id, crypto)
         cursor.execute(sqlite_insert_with_param, data_tuple)
         sqliteConnection.commit()
-        print("Python Variables inserted successfully into SqliteDb_developers table")
+        print("inserted successfully")
         ret_msg = "Success"
         cursor.close()
 
     except sqlite3.Error as error:
-        print("Failed to insert Python variable into sqlite table", error)
+        print("Failed", error)
         ret_msg = "Failed"
     finally:
         if sqliteConnection:
             sqliteConnection.close()
-            print("The SQLite connection is closed")
+            print("connection is closed")
     return ret_msg
 
 def get_crypto_from_id(user_id) -> str:
+    """Функция получает из ячейки базы данных user_id[user_id] список любимой криптовалюты и возвращает его.
+    На вход получает user_id.
+    return string"""
     try:
         list_of_crypto = ""
         sqliteConnection = sqlite3.connect('Crypto_base.db')
         cursor = sqliteConnection.cursor()
-        print("Connected to SQLite")
+        print("Connected")
 
         sql_select_query = """select * from users_data where user_id = ?"""
         cursor.execute(sql_select_query, (user_id,))
@@ -102,18 +111,21 @@ def get_crypto_from_id(user_id) -> str:
         return list_of_crypto
 
     except sqlite3.Error as error:
-        print("Failed to read data from sqlite table", error)
+        print("Failed", error)
     finally:
         if sqliteConnection:
             sqliteConnection.close()
-            print("The SQLite connection is closed")
+            print("connection is closed")
 
 def updateSqliteTable(user_id, crypto) -> str:
+    """Функция обновляет ячейку user_id базы данных новым списком любимой криптовалюты crypto.
+    На вход принимает user_id и список любимой криптовалюты.
+    return string"""
     ret_msg = ""
     try:
         sqliteConnection = sqlite3.connect('Crypto_base.db')
         cursor = sqliteConnection.cursor()
-        print("Connected to SQLite")
+        print("Connected")
 
         cursor.execute("SELECT crypto FROM users_data WHERE user_id = ?", (user_id,))
         check_data = cursor.fetchone()
@@ -130,7 +142,7 @@ def updateSqliteTable(user_id, crypto) -> str:
         cursor.close()
 
     except sqlite3.Error as error:
-        print("Failed to update sqlite table", error)
+        print("Failed to update", error)
         ret_msg = "Failed"
     finally:
         if sqliteConnection:
@@ -138,14 +150,16 @@ def updateSqliteTable(user_id, crypto) -> str:
             print("The sqlite connection is closed")
     return ret_msg
 
-#Вывести все функции и лист всей крипты
+
 @dp.message_handler(commands = ["start"])
 async def cmd_start(message: types.Message):
+    """Бот отвечает приветствием на команду /start"""
     msg_text = text("Доброе время суток\nНапишите команду " + bold("/help") + " для получения помощи по работе с ботом")
     await message.answer(msg_text, parse_mode="MarkdownV2")
 
 @dp.message_handler(commands = ["help"])
 async def cmd_help(message: types.Message):
+    """Бот отвечает на команду /help списком доступных функций бота"""
     msg_text = text(italic("Команды бота записываются без слэша. Аргументы записываются и перечисляются через пробел\n\n") +
                     bold("list") + " \\- посмотреть список доступной криптовалюты\n\n" +
                     bold("cr") + " \\- узнать курс конкретной валюты по названию\n" +
@@ -160,6 +174,7 @@ async def cmd_help(message: types.Message):
 
 @dp.message_handler()
 async def pseudo_commands_parser(msg: types.Message):
+    """Бот обрабатывает все сообщения на наличие в них команд и если они присутствуют, то выполняет их"""
     spl_text = msg.text.split(" ")
     if spl_text[0] == "list":
         msg_text = text("Список доступных криптовалют:\n")
