@@ -115,12 +115,18 @@ def updateSqliteTable(user_id, crypto) -> str:
         cursor = sqliteConnection.cursor()
         print("Connected to SQLite")
 
+        cursor.execute("SELECT crypto FROM users_data WHERE user_id = ?", (user_id,))
+        check_data = cursor.fetchone()
+        if check_data is None:
+            ret_msg = "Not found"
+        else:
+            ret_msg = "Success"
+
         sql_update_query = """Update users_data set crypto = ? where user_id = ?"""
         data = (crypto, user_id)
         cursor.execute(sql_update_query, data)
         sqliteConnection.commit()
         print("Record Updated successfully")
-        ret_msg = "Success"
         cursor.close()
 
     except sqlite3.Error as error:
@@ -151,16 +157,6 @@ async def cmd_help(message: types.Message):
                     bold("uf") + " \\- обновить список любимой криптовалюты \\(записывает новый вместо имеющегося\\)\n\n" +
                     bold("gf") + " \\- для каждой криптовалюты из списка любимых вывести текущий курс")
     await message.answer(msg_text, parse_mode="MarkdownV2")
-
-"""
-Функции:
-Лист крипты +
-Стоимость крипты по названию
-Лучшие места для покупки/продажи по названию
-Добавить любимую крипту
-Вывести стоимость любимой крипты
-Обновить любимую крипту
-"""
 
 @dp.message_handler()
 async def pseudo_commands_parser(msg: types.Message):
@@ -199,43 +195,68 @@ async def pseudo_commands_parser(msg: types.Message):
         for i in range(1, len(spl_text)):
             fav_cryptos += spl_text[i] + " "
         msg_text = ""
-        rm = insert_value(msg.from_user.id, fav_cryptos)
-        if rm == "Success":
-            msg_text = text(italic("Ваша любимая криптовалюта успешно записана"))
+        correct_crypto = True
+        for i in range(len(fav_cryptos)):
+            if not check_valid_crypto(fav_cryptos[i], symbol_from_name, name_from_symbol):
+                correct_crypto = False
+                break
+        if correct_crypto:
+            rm = insert_value(msg.from_user.id, fav_cryptos)
+            if rm == "Success":
+                msg_text = text(italic("Ваша любимая криптовалюта успешно записана"))
+            else:
+                msg_text = text(italic("У вас уже есть любимая криптовалюта\nПопробуйте изменить список"))
+            await msg.answer(msg_text, parse_mode="MarkdownV2")
         else:
-            msg_text = text(italic("У вас уже есть любимая криптовалюта\nПопробуйте изменить список"))
-        await msg.answer(msg_text, parse_mode="MarkdownV2")
+            msg_text = text(italic("Среди списка криптовалюты есть некорректные значения"))
+            await msg.answer(msg_text, parse_mode="MarkdownV2")
 
     elif spl_text[0] == "uf":
         fav_cryptos = ""
         for i in range(1, len(spl_text)):
             fav_cryptos += spl_text[i] + " "
-        """
         msg_text = ""
-        rm = updateSqliteTable(msg.from_user.id, fav_cryptos)
-        if rm == "Success":
-            msg_text = text(italic("Список вашей любимой криптовалюты успешно обновлён"))
+        correct_crypto = True
+        for i in range(len(fav_cryptos)):
+            if not check_valid_crypto(fav_cryptos[i], symbol_from_name, name_from_symbol):
+                correct_crypto = False
+                break
+        if correct_crypto:
+            rm = updateSqliteTable(msg.from_user.id, fav_cryptos)
+            if rm == "Success":
+                msg_text = text(italic("Список вашей любимой криптовалюты успешно обновлён"))
+            elif rm == "Not found":
+                msg_text = text(italic("Не удалось обновить список вашей любимой криптовалюты\n" +
+                                       "Видимо, у вас нет списка любимой криптовалюты. Попробуйте создать его"))
+            else:
+                msg_text = text(italic("Произошла обшибка при обращении к базе данных"))
+            await msg.answer(msg_text, parse_mode="MarkdownV2")
         else:
-            msg_text = text(italic("Не удалось обновить список вашей любимой криптовалюты\n" +
-                                   "Видимо, у вас нет списка любимой криптовалюты. Попробуйте создать его"))
-        await msg.answer(msg_text, parse_mode="MarkdownV2")
-        """
-        rm = updateSqliteTable(msg.from_user.id, fav_cryptos)
-        msg_text = text(italic("Список вашей любимой криптовалюты успешно обновлён"))
-        await msg.answer(msg_text, parse_mode="MarkdownV2")
+            msg_text = text(italic("Среди списка криптовалюты есть некорректные значения"))
+            await msg.answer(msg_text, parse_mode="MarkdownV2")
 
     elif spl_text[0] == "gf":
         fav_cryptos = get_crypto_from_id(msg.from_user.id).split(" ")
         if fav_cryptos[-1] == "":
             fav_cryptos.pop(-1)
-        msg_text = text(bold("Ваша любимая криптовалюта:\n"))
-        for i in range(len(fav_cryptos)):
-            cur_rate = get_current_price_of_crypto(fav_cryptos[i]).split(" ")
-            if cur_rate[0] == "Not":
-                msg_text += text(bold(fav_cryptos[i]) + ":\nКриптовалюта не найдена\n")
-            else:
-                msg_text += text("Курс " + bold(fav_cryptos[i]) + ":\nТекущая цена: " + bold(cur_rate[0]) +
-                                "\nИзменение за 24 часа: " + bold(cur_rate[1]) + "\n")
+        msg_text = ""
+        if len(fav_cryptos) == 0:
+            msg_text = text(italic("Судя по всему у вас нет списка любимой криптовалюты.\n" +
+                                   "Попробуйте его создать"))
+        else:
+            msg_text = text(bold("Ваша любимая криптовалюта:\n"))
+            for i in range(len(fav_cryptos)):
+                cur_rate = get_current_price_of_crypto(fav_cryptos[i]).split(" ")
+                if cur_rate[0] == "Not":
+                    msg_text += text(bold(fav_cryptos[i]) + ":\nКриптовалюта не найдена\n")
+                else:
+                    msg_text += text("Курс " + bold(fav_cryptos[i]) + ":\nТекущая цена: " + bold(cur_rate[0]) +
+                                    "\nИзменение за 24 часа: " + bold(cur_rate[1]) + "\n")
+        await msg.answer(msg_text, parse_mode="MarkdownV2")
+
+    else:
+        msg_text = text(italic("Извините, я не понимаю, что вы от меня хотите..."+
+                               "\nДля помощи введите команду ") + bold("/help"))
         await msg.answer(msg_text, parse_mode="MarkdownV2")
 
 if __name__ == '__main__':
