@@ -73,7 +73,7 @@ def best_place_to_buy_or_sell_crypto(crypto: str) -> list:
 
     return out
 
-def check_valid_crypto(crypto: str) -> bool:
+def check_valid_crypto(crypto: str, symbol_from_name: dict, name_from_symbol: dict) -> bool:
     crypto = crypto.lower()
     if (crypto in symbol_from_name or crypto in name_from_symbol):
         return True
