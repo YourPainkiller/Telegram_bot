@@ -3,7 +3,7 @@ from aiogram.dispatcher import Dispatcher
 from aiogram.utils import executor
 from aiogram.utils.markdown import bold, code, text, italic, link
 import sqlite3
-from links_to_coins import coins
+from links_to_coins import coins, exch
 
 from requests_f import symbol_to_name
 from requests_f import name_to_symbol
@@ -205,14 +205,15 @@ async def pseudo_commands_parser(msg: types.Message):
                 for i in range(num):
                     if i == len(bp):
                         break
-                    msg_text += text("\t\t" + bold(bp[i][0]) + ": " +
+                    msg_text += text("\t\t" + link(bp[i][0], exch.get(bp[i][0], "https://www.google.com/")) + ": " +
                                      code('{:.5f}'.format(float(bp[i][1]))) + "\n")
                 msg_text += text(bold("\tПродажа:\n"))
                 for i in range(num):
                     if i == len(bp):
                         break
-                    msg_text += text("\t\t" + bold(bp[len(bp) - i - 1][0]) + ": " +
-                                     code('{:.5f}'.format(float(bp[len(bp) - i - 1][1]))) + "\n")
+                    msg_text += text("\t\t" +
+                        link(bp[len(bp) - i - 1][0], exch.get(bp[len(bp) - i - 1][0], "https://www.google.com/"))
+                        + ": " + code('{:.5f}'.format(float(bp[len(bp) - i - 1][1]))) + "\n")
                 await msg.answer(msg_text, parse_mode="MarkdownV2")
             else:
                 msg_text = text(italic("Криптовалюта не найдена"))
