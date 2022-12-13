@@ -1,4 +1,3 @@
-#https://t.me/CryptoIS_bot - ссылка на бота
 from aiogram import Bot, types
 from aiogram.dispatcher import Dispatcher
 from aiogram.utils import executor
@@ -166,74 +165,99 @@ async def pseudo_commands_parser(msg: types.Message):
         await msg.answer(msg_text, parse_mode="MarkdownV2")
 
     elif spl_text[0] == "cr":
-        cur_rate = get_current_price_of_crypto(spl_text[1]).split(" ")
+        crypto = spl_text[1].lower()
+        if crypto in name_from_symbol:
+            crypto = name_from_symbol[crypto]
+        cur_rate = get_current_price_of_crypto(crypto).split(" ")
         msg_text = ""
         if cur_rate[0] == "Not":
             msg_text = "Криптовалюта не найдена"
         else:
-            msg_text = text("Курс " + bold(spl_text[1]) + ":\nТекущая цена: " + bold(cur_rate[0]) +
+            msg_text = text("Курс " + bold(crypto) + ":\nТекущая цена: " + bold(cur_rate[0]) +
                             "\nИзменение за 24 часа: " + bold(cur_rate[1]))
         await msg.answer(msg_text, parse_mode="MarkdownV2")
 
     elif spl_text[0] == "bp":
-        bp = best_place_to_buy_or_sell_crypto(spl_text[1])
-        msg_text = ""
-        if bp[0] == "Not found":
-            msg_text = "Криптовалюта не найдена"
+        crypto = spl_text[1].lower()
+        num = int(spl_text[2])
+        if check_valid_crypto(crypto, symbol_from_name, name_from_symbol):
+            if crypto in name_from_symbol:
+                crypto = name_from_symbol[crypto]
+            bp = best_place_to_buy_or_sell_crypto(crypto)
+            msg_text = text(bold(crypto + ":\n\tПокупка:\n"))
+            for i in range(num):
+                msg_text += text("\t\t" + bold(bp[i][0]) + ": " + code(bp[i][1]) + "\n")
+            msg_text += text(bold("\tПродажа\n"))
+            for i in range(num):
+                msg_text += text("\t\t" + bold(bp[len(bp) - i - 1][0]) + ": " + code(bp[len(bp) - i - 1][1]) + "\n")
+            await msg.answer(msg_text, parse_mode="MarkdownV2")
         else:
-            place_to_sell = bp[0][1]
-            rate_to_sell = bp[0][0]
-            place_to_buy = bp[1][1]
-            rate_to_buy = bp[1][0]
-            msg_text = text("Лучшее место для продажи \\- " + bold(place_to_sell) +
-                            ": " + code(str(rate_to_sell)) + "\nЛучшее место для покупки \\- " +
-                            bold(place_to_buy) + ": " + code(str(rate_to_buy)))
-        await msg.answer(msg_text, parse_mode="MarkdownV2")
+            msg_text = text(italic("Криптовалюта не найдена"))
+            await msg.answer(msg_text, parse_mode="MarkdownV2")
 
     elif spl_text[0] == "af":
         fav_cryptos = ""
-        for i in range(1, len(spl_text)):
-            fav_cryptos += spl_text[i] + " "
-        msg_text = ""
-        correct_crypto = True
-        for i in range(len(fav_cryptos)):
-            if not check_valid_crypto(fav_cryptos[i], symbol_from_name, name_from_symbol):
-                correct_crypto = False
-                break
-        if correct_crypto:
-            rm = insert_value(msg.from_user.id, fav_cryptos)
-            if rm == "Success":
-                msg_text = text(italic("Ваша любимая криптовалюта успешно записана"))
-            else:
-                msg_text = text(italic("У вас уже есть любимая криптовалюта\nПопробуйте изменить список"))
-            await msg.answer(msg_text, parse_mode="MarkdownV2")
+        spl_text.pop(0)
+        if len(spl_text) == 0:
+            await msg.answer(text(italic("В списке должна быть криптовалюта")), parse_mode="MarkdownV2")
         else:
-            msg_text = text(italic("Среди списка криптовалюты есть некорректные значения"))
-            await msg.answer(msg_text, parse_mode="MarkdownV2")
+            for i in range(len(spl_text)):
+                spl_text[i] = spl_text[i].lower()
+                if spl_text[i] in name_from_symbol:
+                    spl_text[i] = name_from_symbol[spl_text[i]]
+            spl_text = list(set(spl_text))
+            for i in range(len(spl_text)):
+                fav_cryptos += spl_text[i].lower() + " "
+            msg_text = ""
+
+            correct_crypto = True
+            for i in range(len(spl_text)):
+                if not check_valid_crypto(spl_text[i], symbol_from_name, name_from_symbol):
+                    correct_crypto = False
+                    break
+            if correct_crypto:
+                rm = insert_value(msg.from_user.id, fav_cryptos.lower())
+                if rm == "Success":
+                    msg_text = text(italic("Ваша любимая криптовалюта успешно записана"))
+                else:
+                    msg_text = text(italic("У вас уже есть любимая криптовалюта\nПопробуйте изменить список"))
+                await msg.answer(msg_text, parse_mode="MarkdownV2")
+            else:
+                msg_text = text(italic("Среди списка криптовалюты есть некорректные значения"))
+                await msg.answer(msg_text, parse_mode="MarkdownV2")
 
     elif spl_text[0] == "uf":
         fav_cryptos = ""
-        for i in range(1, len(spl_text)):
-            fav_cryptos += spl_text[i] + " "
-        msg_text = ""
-        correct_crypto = True
-        for i in range(len(fav_cryptos)):
-            if not check_valid_crypto(fav_cryptos[i], symbol_from_name, name_from_symbol):
-                correct_crypto = False
-                break
-        if correct_crypto:
-            rm = updateSqliteTable(msg.from_user.id, fav_cryptos)
-            if rm == "Success":
-                msg_text = text(italic("Список вашей любимой криптовалюты успешно обновлён"))
-            elif rm == "Not found":
-                msg_text = text(italic("Не удалось обновить список вашей любимой криптовалюты\n" +
-                                       "Видимо, у вас нет списка любимой криптовалюты. Попробуйте создать его"))
-            else:
-                msg_text = text(italic("Произошла обшибка при обращении к базе данных"))
-            await msg.answer(msg_text, parse_mode="MarkdownV2")
+        spl_text.pop(0)
+        if len(spl_text) == 0:
+            await msg.answer(text(italic("В списке должна быть криптовалюта")), parse_mode="MarkdownV2")
         else:
-            msg_text = text(italic("Среди списка криптовалюты есть некорректные значения"))
-            await msg.answer(msg_text, parse_mode="MarkdownV2")
+            for i in range(len(spl_text)):
+                spl_text[i] = spl_text[i].lower()
+                if spl_text[i] in name_from_symbol:
+                    spl_text[i] = name_from_symbol[spl_text[i]]
+            spl_text = list(set(spl_text))
+            for i in range(len(spl_text)):
+                fav_cryptos += spl_text[i].lower() + " "
+            msg_text = ""
+            correct_crypto = True
+            for i in range(len(spl_text)):
+                if not check_valid_crypto(spl_text[i].lower(), symbol_from_name, name_from_symbol):
+                    correct_crypto = False
+                    break
+            if correct_crypto:
+                rm = updateSqliteTable(msg.from_user.id, fav_cryptos)
+                if rm == "Success":
+                    msg_text = text(italic("Список вашей любимой криптовалюты успешно обновлён"))
+                elif rm == "Not found":
+                    msg_text = text(italic("Не удалось обновить список вашей любимой криптовалюты\n" +
+                                           "Видимо, у вас нет списка любимой криптовалюты. Попробуйте создать его"))
+                else:
+                    msg_text = text(italic("Произошла обшибка при обращении к базе данных"))
+                await msg.answer(msg_text, parse_mode="MarkdownV2")
+            else:
+                msg_text = text(italic("Среди списка криптовалюты есть некорректные значения"))
+                await msg.answer(msg_text, parse_mode="MarkdownV2")
 
     elif spl_text[0] == "gf":
         fav_cryptos = get_crypto_from_id(msg.from_user.id).split(" ")
