@@ -185,8 +185,8 @@ async def pseudo_commands_parser(msg: types.Message):
         if cur_rate[0] == "Not":
             msg_text = "Криптовалюта не найдена"
         else:
-            msg_text = text("Курс " + bold(crypto) + ":\nТекущая цена: " + bold('{:.2f}'.format(float(cur_rate[0]))) +
-                            "\nИзменение за 24 часа: " + bold('{:.2f}'.format(float(cur_rate[1]))))
+            msg_text = text("Курс " + bold(crypto) + ":\nТекущая цена: " + bold('{:.5f}'.format(float(cur_rate[0]))) +
+                            "\nИзменение за 24 часа: " + bold('{:.5f}'.format(float(cur_rate[1]))))
         await msg.answer(msg_text, parse_mode="MarkdownV2")
 
     elif spl_text[0] == "bp":
@@ -206,13 +206,13 @@ async def pseudo_commands_parser(msg: types.Message):
                     if i == len(bp):
                         break
                     msg_text += text("\t\t" + bold(bp[i][0]) + ": " +
-                                     code('{:.2f}'.format(float(bp[i][1]))) + "\n")
+                                     code('{:.5f}'.format(float(bp[i][1]))) + "\n")
                 msg_text += text(bold("\tПродажа:\n"))
                 for i in range(num):
                     if i == len(bp):
                         break
                     msg_text += text("\t\t" + bold(bp[len(bp) - i - 1][0]) + ": " +
-                                     code('{:.2f}'.format(float(bp[len(bp) - i - 1][1]))) + "\n")
+                                     code('{:.5f}'.format(float(bp[len(bp) - i - 1][1]))) + "\n")
                 await msg.answer(msg_text, parse_mode="MarkdownV2")
             else:
                 msg_text = text(italic("Криптовалюта не найдена"))
@@ -298,8 +298,8 @@ async def pseudo_commands_parser(msg: types.Message):
                     msg_text += text(bold(fav_cryptos[i]) + ":\nКриптовалюта не найдена\n")
                 else:
                     msg_text += text("Курс " + bold(fav_cryptos[i]) + ":\nТекущая цена: " +
-                                     bold('{:.2f}'.format(float(cur_rate[0]))) +
-                                    "\nИзменение за 24 часа: " + bold('{:.2f}'.format(float(cur_rate[1]))) + "\n")
+                                     bold('{:.5f}'.format(float(cur_rate[0]))) +
+                                    "\nИзменение за 24 часа: " + bold('{:.5f}'.format(float(cur_rate[1]))) + "\n")
         await msg.answer(msg_text, parse_mode="MarkdownV2")
 
     else:
