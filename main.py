@@ -1,3 +1,4 @@
+#https://t.me/CryptoIS_bot - ссылка на бота
 from aiogram import Bot, types
 from aiogram.dispatcher import Dispatcher
 from aiogram.utils import executor
