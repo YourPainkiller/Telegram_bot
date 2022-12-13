@@ -49,29 +49,14 @@ def best_place_to_buy_or_sell_crypto(crypto: str) -> list:
     text = response.json()
     market_price_list = []
     out = []
-    try:
-        for i in range(0, len(text['data']), 1):
-            x = []
-            if (text['data'][i]['quoteSymbol'] == "USD" or text['data'][i]['quoteSymbol'] == "USDT"):
-                x.append(text['data'][i]['exchangeId'])
-                x.append(text['data'][i]['priceUsd'])
-                market_price_list.append(x)
-        sell = market_price_list[0][0]
-        buy = market_price_list[0][0]
-        mx = float(market_price_list[0][1])
-        mn = float(market_price_list[0][1])
-        for i in range(0, len(market_price_list), 1):
-            if (float(market_price_list[i][1]) > mx):
-                mx = float(market_price_list[i][1])
-                sell = market_price_list[i][0]
-            if (float(market_price_list[i][1]) < mn):
-                mn = float(market_price_list[i][1])
-                buy = market_price_list[i][0]
-        out = [[mx, sell], [mn, buy]]
-    except:
-        out = ["Not found"]
-
-    return out
+    for i in range(0, len(text['data']), 1):
+        x = []
+        if (text['data'][i]['quoteSymbol'] == "USD" or text['data'][i]['quoteSymbol'] == "USDT"):
+            x.append(text['data'][i]['exchangeId'])
+            x.append(text['data'][i]['priceUsd'])
+            market_price_list.append(x)
+    market_price_list.sort(key = lambda x: x[1])
+    return market_price_list
 
 def check_valid_crypto(crypto: str, symbol_from_name: dict, name_from_symbol: dict) -> bool:
     crypto = crypto.lower()
