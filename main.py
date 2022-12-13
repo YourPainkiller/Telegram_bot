@@ -1,8 +1,9 @@
 from aiogram import Bot, types
 from aiogram.dispatcher import Dispatcher
 from aiogram.utils import executor
-from aiogram.utils.markdown import bold, code, text, italic
+from aiogram.utils.markdown import bold, code, text, italic, link
 import sqlite3
+from links_to_coins import coins
 
 from requests_f import symbol_to_name
 from requests_f import name_to_symbol
@@ -149,8 +150,8 @@ async def cmd_help(message: types.Message):
                     bold("list") + " \\- посмотреть список доступной криптовалюты\n\n" +
                     bold("cr") + " \\- узнать курс конкретной валюты по названию\n" +
                     "\tПример:\t" + code("cr bitcoin\n\n") +
-                    bold("bp") + " \\- узнать лучшее место для продажи и лучшее место для " +
-                                 "покупки конкретной криптовалюты по названию\n\n" +
+                    bold("bp") + " \\- узнать n лучших мест для покупки и n лучших мест для продажи криптовалюты\n" +
+                    "\tПример:\t" + code("bp btc 5\n\n") +
                     bold("af") + " \\- создать список любимой криптовалюты по названиям\n" +
                     "\tПример:\t" + code("af bitcoin dogecoin ethereum\n\n") +
                     bold("uf") + " \\- обновить список любимой криптовалюты \\(записывает новый вместо имеющегося\\)\n\n" +
@@ -161,7 +162,18 @@ async def cmd_help(message: types.Message):
 async def pseudo_commands_parser(msg: types.Message):
     spl_text = msg.text.split(" ")
     if spl_text[0] == "list":
-        msg_text = text("Список доступных криптовалют:\n" + bold(get_list_of_crypto()))
+        msg_text = text("Список доступных криптовалют:\n")
+        list_of_crypto = get_list_of_crypto().split("\n")
+        list_of_crypto.pop(-1)
+        flag = True
+        for i in range(len(list_of_crypto)):
+            crypto = list_of_crypto[i].split(" ")[0]
+            crypto_symbol = list_of_crypto[i].split(" ")[1]
+            msg_text += text(link(crypto, coins.get(crypto, "https://www.google.com/")) + " " + bold(crypto_symbol) + "\n")
+            if i == len(list_of_crypto) // 2 and flag:
+                await msg.answer(msg_text, parse_mode="MarkdownV2")
+                msg_text = ""
+                flag = False
         await msg.answer(msg_text, parse_mode="MarkdownV2")
 
     elif spl_text[0] == "cr":
@@ -173,27 +185,38 @@ async def pseudo_commands_parser(msg: types.Message):
         if cur_rate[0] == "Not":
             msg_text = "Криптовалюта не найдена"
         else:
-            msg_text = text("Курс " + bold(crypto) + ":\nТекущая цена: " + bold(cur_rate[0]) +
-                            "\nИзменение за 24 часа: " + bold(cur_rate[1]))
+            msg_text = text("Курс " + bold(crypto) + ":\nТекущая цена: " + bold('{:.2f}'.format(float(cur_rate[0]))) +
+                            "\nИзменение за 24 часа: " + bold('{:.2f}'.format(float(cur_rate[1]))))
         await msg.answer(msg_text, parse_mode="MarkdownV2")
 
     elif spl_text[0] == "bp":
         crypto = spl_text[1].lower()
-        num = int(spl_text[2])
-        if check_valid_crypto(crypto, symbol_from_name, name_from_symbol):
-            if crypto in name_from_symbol:
-                crypto = name_from_symbol[crypto]
-            bp = best_place_to_buy_or_sell_crypto(crypto)
-            msg_text = text(bold(crypto + ":\n\tПокупка:\n"))
-            for i in range(num):
-                msg_text += text("\t\t" + bold(bp[i][0]) + ": " + code(bp[i][1]) + "\n")
-            msg_text += text(bold("\tПродажа\n"))
-            for i in range(num):
-                msg_text += text("\t\t" + bold(bp[len(bp) - i - 1][0]) + ": " + code(bp[len(bp) - i - 1][1]) + "\n")
-            await msg.answer(msg_text, parse_mode="MarkdownV2")
+        if len(spl_text) != 3:
+            await msg.answer(text(italic("У данной команды должно быть 2 аргумента")), parse_mode="MarkdownV2")
+        elif not spl_text[2].isdigit():
+            await msg.answer(text(italic("Второй аргумент должен быть числом")), parse_mode="MarkdownV2")
         else:
-            msg_text = text(italic("Криптовалюта не найдена"))
-            await msg.answer(msg_text, parse_mode="MarkdownV2")
+            num = int(spl_text[2])
+            if check_valid_crypto(crypto, symbol_from_name, name_from_symbol):
+                if crypto in name_from_symbol:
+                    crypto = name_from_symbol[crypto]
+                bp = best_place_to_buy_or_sell_crypto(crypto)
+                msg_text = text(bold(crypto + ":\n\tПокупка:\n"))
+                for i in range(num):
+                    if i == len(bp):
+                        break
+                    msg_text += text("\t\t" + bold(bp[i][0]) + ": " +
+                                     code('{:.2f}'.format(float(bp[i][1]))) + "\n")
+                msg_text += text(bold("\tПродажа:\n"))
+                for i in range(num):
+                    if i == len(bp):
+                        break
+                    msg_text += text("\t\t" + bold(bp[len(bp) - i - 1][0]) + ": " +
+                                     code('{:.2f}'.format(float(bp[len(bp) - i - 1][1]))) + "\n")
+                await msg.answer(msg_text, parse_mode="MarkdownV2")
+            else:
+                msg_text = text(italic("Криптовалюта не найдена"))
+                await msg.answer(msg_text, parse_mode="MarkdownV2")
 
     elif spl_text[0] == "af":
         fav_cryptos = ""
@@ -274,8 +297,9 @@ async def pseudo_commands_parser(msg: types.Message):
                 if cur_rate[0] == "Not":
                     msg_text += text(bold(fav_cryptos[i]) + ":\nКриптовалюта не найдена\n")
                 else:
-                    msg_text += text("Курс " + bold(fav_cryptos[i]) + ":\nТекущая цена: " + bold(cur_rate[0]) +
-                                    "\nИзменение за 24 часа: " + bold(cur_rate[1]) + "\n")
+                    msg_text += text("Курс " + bold(fav_cryptos[i]) + ":\nТекущая цена: " +
+                                     bold('{:.2f}'.format(float(cur_rate[0]))) +
+                                    "\nИзменение за 24 часа: " + bold('{:.2f}'.format(float(cur_rate[1]))) + "\n")
         await msg.answer(msg_text, parse_mode="MarkdownV2")
 
     else:
