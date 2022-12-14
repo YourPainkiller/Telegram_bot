@@ -161,7 +161,10 @@ async def cmd_start(message: types.Message):
 async def cmd_help(message: types.Message):
     """Бот отвечает на команду /help списком доступных функций бота"""
     msg_text = text(italic("Команды бота записываются без слэша. Аргументы записываются и перечисляются через пробел\n\n") +
-                    bold("list") + " \\- посмотреть список доступной криптовалюты\n\n" +
+                    bold("list") + " \\- посмотреть список доступной криптовалюты\\. " +
+                                   "Возможна фильтрация по первой букве\n" +
+                    "\tПример 1:\t" + code("list") +
+                    "\n\tПример 2:\t" + code("list b\n\n") +
                     bold("cr") + " \\- узнать курс конкретной валюты по названию\n" +
                     "\tПример:\t" + code("cr bitcoin\n\n") +
                     bold("bp") + " \\- узнать n лучших мест для покупки и n лучших мест для продажи криптовалюты\n" +
@@ -177,19 +180,30 @@ async def pseudo_commands_parser(msg: types.Message):
     """Бот обрабатывает все сообщения на наличие в них команд и если они присутствуют, то выполняет их"""
     spl_text = msg.text.split(" ")
     if spl_text[0] == "list":
-        msg_text = text("Список доступных криптовалют:\n")
-        list_of_crypto = get_list_of_crypto().split("\n")
-        list_of_crypto.pop(-1)
-        flag = True
-        for i in range(len(list_of_crypto)):
-            crypto = list_of_crypto[i].split(" ")[0]
-            crypto_symbol = list_of_crypto[i].split(" ")[1]
-            msg_text += text(link(crypto, coins.get(crypto, "https://www.google.com/")) + " " + bold(crypto_symbol) + "\n")
-            if i == len(list_of_crypto) // 2 and flag:
-                await msg.answer(msg_text, parse_mode="MarkdownV2")
-                msg_text = ""
-                flag = False
-        await msg.answer(msg_text, parse_mode="MarkdownV2")
+        filter_flag = True
+        if len(spl_text) == 1:
+            filter_flag = False
+            first_char = "#"
+        else:
+            first_char = spl_text[1].lower()
+        if len(first_char) > 1:
+            await msg.answer(text(italic("После команды list должно быть записано не более одной первой буквы")),
+                             parse_mode="MarkdownV2")
+        else:
+            msg_text = text("Список доступных криптовалют:\n")
+            list_of_crypto = get_list_of_crypto().split("\n")
+            list_of_crypto.pop(-1)
+            flag = True
+            for i in range(len(list_of_crypto)):
+                crypto = list_of_crypto[i].split(" ")[0]
+                if not filter_flag or crypto[0] == first_char:
+                    crypto_symbol = list_of_crypto[i].split(" ")[1]
+                    msg_text += text(link(crypto, coins.get(crypto, "https://www.google.com/")) + " " + bold(crypto_symbol) + "\n")
+                    if i == len(list_of_crypto) // 2 and flag:
+                        await msg.answer(msg_text, parse_mode="MarkdownV2")
+                        msg_text = ""
+                        flag = False
+            await msg.answer(msg_text, parse_mode="MarkdownV2")
 
     elif spl_text[0] == "cr":
         crypto = spl_text[1].lower()
