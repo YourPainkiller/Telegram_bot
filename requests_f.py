@@ -1,7 +1,6 @@
 import requests
 import json
 
-
 def symbol_to_name() -> dict:
     """Функция создает словарь, где ключ это сокращенное название криптовалюты, а значение название криптовалюты.
     На вход ничего не принимает. 
@@ -46,13 +45,16 @@ def get_current_price_of_crypto(crypto: str):
     """Функция вывод цену криптовалюты crypto и ее изменение в процентах за 24 часа.
     На вход принимает строку - название криптовалюты для которой нужно узнать цену.
     return - string"""
-    request = "https://api.coincap.io/v2/assets/" + crypto
-    response = requests.get(request)
-    text = response.json()
+    crypto = crypto.lower()
     answer = ""
-    try:
+    if check_valid_crypto(crypto, symbol_from_name, name_from_symbol):
+        if crypto in name_from_symbol:
+            crypto = name_from_symbol[crypto]
+        request = "https://api.coincap.io/v2/assets/" + crypto
+        response = requests.get(request)
+        text = response.json()
         answer = str(text['data']['priceUsd']) + " " + str(text['data']['changePercent24Hr'])
-    except:
+    else:
         answer = "Not found"
     return answer
 
@@ -60,18 +62,23 @@ def best_place_to_buy_or_sell_crypto(crypto: str) -> list:
     """Функция возвращает отсортированный по возрастанию цены массив, которой состоит из [название биржи][цена] для оптимальной покупки или продажи определенной криптовалюты
     На вход принимает строку - название криптовалюты для которой нужно найти оптимальное место покупки/продажи.
     return list[][]"""
-    request = "https://api.coincap.io/v2/assets/" + crypto + "/markets"
-    response = requests.get(request)
-    text = response.json()
+    crypto = crypto.lower()
     market_price_list = []
-    out = []
-    for i in range(0, len(text['data']), 1):
-        x = []
-        if (text['data'][i]['quoteSymbol'] == "USD" or text['data'][i]['quoteSymbol'] == "USDT"):
-            x.append(text['data'][i]['exchangeId'])
-            x.append(text['data'][i]['priceUsd'])
-            market_price_list.append(x)
-    market_price_list.sort(key = lambda x: x[1])
+    if check_valid_crypto(crypto, symbol_from_name, name_from_symbol):
+        if crypto in name_from_symbol:
+            crypto = name_from_symbol[crypto]
+        request = "https://api.coincap.io/v2/assets/" + crypto + "/markets"
+        response = requests.get(request)
+        text = response.json()
+    
+        out = []
+        for i in range(0, len(text['data']), 1):
+            x = []
+            if (text['data'][i]['quoteSymbol'] == "USD" or text['data'][i]['quoteSymbol'] == "USDT"):
+                x.append(text['data'][i]['exchangeId'])
+                x.append(text['data'][i]['priceUsd'])
+                market_price_list.append(x)
+        market_price_list.sort(key = lambda x: x[1])
     return market_price_list
 
 def check_valid_crypto(crypto: str, symbol_from_name: dict, name_from_symbol: dict) -> bool:
@@ -83,3 +90,6 @@ def check_valid_crypto(crypto: str, symbol_from_name: dict, name_from_symbol: di
         return True
     else:
         return False
+
+symbol_from_name = name_to_symbol()
+name_from_symbol = symbol_to_name()
